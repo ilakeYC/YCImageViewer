@@ -17,13 +17,13 @@ import UIKit
 @objc protocol YCImageViewerDataSource {
     
     func numberOfImagesInImageViewer(imageViewer: YCImageViewer) -> Int
-    func imageViewer(imageViewer: YCImageViewer, imageSetter: (image: UIImage?, placeHolderImage: UIImage, index: Int)->(), atIndex: Int)
+    func imageViewer(imageViewer: YCImageViewer, imageSetter: (image: UIImage?, placeHolderImage: UIImage?, index: Int)->(), atIndex: Int)
 }
 
 class YCImageViewer: UIView {
 
     var delegate: YCImageViewerDelegate?
-    var dataSource: YCImageViewerDataSource!
+    var dataSource: YCImageViewerDataSource?
     
     private let collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
     
@@ -45,6 +45,7 @@ class YCImageViewer: UIView {
         collectionView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapAction)))
         
     }
+    
     func tapAction() {
         delegate?.imageViewerDidTapedView?(self)
     }
@@ -70,11 +71,17 @@ class YCImageViewer: UIView {
     
     private var zooms: [NSIndexPath: CGFloat] = [:]
     var currentPage = 0
+    var pageForDelete : Int {
+        return collectionView.indexPathForCell(collectionView.visibleCells().first!)!.section
+    }
 }
 
 extension YCImageViewer: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func numberOfSectionsInCollectionView(collectionView: UICollectionView) -> Int {
+        if dataSource == nil {
+            return 0
+        }
         return dataSource!.numberOfImagesInImageViewer(self)
     }
  
@@ -87,7 +94,7 @@ extension YCImageViewer: UICollectionViewDelegate, UICollectionViewDataSource, U
         
         weak var weakSelf = self
         
-        dataSource.imageViewer(self, imageSetter: { (image, placeHolderImage, index) in
+        dataSource!.imageViewer(self, imageSetter: { (image, placeHolderImage, index) in
                 if weakSelf?.currentPage == index || indexPath.section == index {
                     if image == nil {
                         cell.imageView.image = placeHolderImage
@@ -118,6 +125,10 @@ extension YCImageViewer: UICollectionViewDelegate, UICollectionViewDataSource, U
     }
     
     func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
+        currentPage = Int(scrollView.contentOffset.x / scrollView.bounds.width)
+        delegate?.imageViewer?(self, didUpdataPage: currentPage)
+    }
+    func scrollViewDidEndScrollingAnimation(scrollView: UIScrollView) {
         currentPage = Int(scrollView.contentOffset.x / scrollView.bounds.width)
         delegate?.imageViewer?(self, didUpdataPage: currentPage)
     }
